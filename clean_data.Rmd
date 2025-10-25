@@ -1,0 +1,145 @@
+---
+title: "filter_transport_data"
+output: pdf_document
+date: "2025-10-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Filter quarterly volume transport data
+
+Source: <https://www.ams.usda.gov/services/transportation-analysis/agricultural-refrigerated-truck-quarterly-datasets>
+
+quarterly_vols_all: "Quarterly Shipment Volumes by Origin and Commodity" Quarterly totals of refrigerated truck load volumes (tonnage) from U.S. origin shipping areas and cross-border movements from Mexico and Canada for individual fruit and vegetable varieties. Entries marked zero tons were registered commodity movements, but the sum of all shipment volumes totaled less than 1. Source: Specialty Crops/Market News/AMS/USDA
+
+### Filter to only strawberries
+
+```{r}
+library(dplyr)
+df <- read.csv("quarterly_vols_all.csv")
+
+strawberry_data <- df %>%
+  filter(grepl("st[r]?awberr(y|ies)", Commodity, ignore.case = TRUE))
+
+write.csv(strawberry_data, "quarterly_vols_strawberries.csv", row.names = FALSE)
+```
+
+## Clean USDA Strawberry Data
+
+**Source:** <https://quickstats.nass.usda.gov/#C1D8E381-62E7-385D-8B69-015732CD24A0>
+
+**Selection Criteria:**
+
+-   **Program:** Survey
+
+    -   Provides more frequent and current statistics than Census data
+    -   Better for tracking seasonal patterns and market trends
+
+-   **Sector:** Crops
+
+-   **Group:** Fruit & Tree Nuts
+
+-   **Commodity:** Strawberries
+
+-   **Categories Selected:**
+
+    -   **Production:** Strawberry volumes produced; enables direct comparison with shipment volumes
+    -   **Area Harvested:** Land used for strawberry production; provides context for production capacity by region
+    -   **Yield:** Production per acre; explains efficiency and regional productivity differences
+    -   **Price Received:** Market value; helps explain economic factors affecting transportation decisions
+    -   **Condition:** Quality ratings; explains variations in marketability and shipment patterns
+
+-   **Data Items:**
+
+    -   **STRAWBERRIES - PRODUCTION, MEASURED IN TONS**
+        -   Total strawberry production by state in tons; matches unit of measurement in shipment data for direct comparison
+    -   **STRAWBERRIES - ACRES HARVESTED**
+        -   Total acreage dedicated to strawberry production; indicates production scale and regional importance
+    -   **STRAWBERRIES - YIELD, MEASURED IN TONS / ACRE**
+        -   Productivity metric; reveals efficiency differences across states that may affect transportation patterns
+    -   **STRAWBERRIES - PRICE RECEIVED, MEASURED IN \$ / CWT**
+        -   Farm-gate prices; explains economic incentives for transportation and market decisions (CWT = hundredweight = 100 lbs)
+    -   **STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN CWT**
+        -   Fresh market production specifically; most relevant since shipment data tracks fresh strawberries transported to market, not processing strawberries
+
+-   **Geographic Level:** STATE
+
+    -   Matches the origin locations in transportation shipment data
+    -   Enables state-by-state analysis of production vs. shipment volumes
+
+-   **Period Type:** ANNUAL
+
+    -   Provides yearly totals for comparison with aggregated quarterly shipment data
+    
+```{r}
+library(janitor)
+library(dplyr)
+library(readr)
+library(tidyr)
+
+relevant_strawberries <- read_csv("relevant_strawberries.csv")
+relevant_strawberries <- clean_names(relevant_strawberries)
+
+# Remove columns with all NAs
+relevant_strawberries <- relevant_strawberries %>%
+  select(where(~!all(is.na(.))))
+
+# Remove columns with no variation (all values are identical)
+# These columns provide no analytical value:
+#   - geo_level: all "STATE"
+#   - watershed_code: all "00000000"
+#   - commodity: all "STRAWBERRIES"
+#   - domain: all "TOTAL"
+#   - domain_category: all "NOT SPECIFIED"
+
+relevant_strawberries <- relevant_strawberries %>%
+  select(-c(geo_level, watershed_code, commodity, domain, domain_category))
+
+# Pivot the data to wide format
+relevant_strawberries_wide <- relevant_strawberries %>%
+  # Create shorter, cleaner column names from data_item
+  mutate(metric = case_when(
+    grepl("PRICE RECEIVED", data_item) ~ "price_per_cwt",
+    grepl("ACRES HARVESTED", data_item) ~ "acres_harvested",
+    grepl("FRESH MARKET - PRODUCTION", data_item) ~ "production_cwt"
+  )) %>%
+  # Pivot wider so each metric becomes its own column
+  pivot_wider(
+    id_cols = c(program, year, period, state, state_ansi),
+    names_from = metric,
+    values_from = value
+  )
+
+relevant_strawberries_wide <- relevant_strawberries %>%
+  mutate(metric = case_when(
+    grepl("PRICE RECEIVED", data_item) ~ "price_per_cwt",
+    grepl("ACRES HARVESTED", data_item) ~ "acres_harvested",
+    grepl("FRESH MARKET - PRODUCTION", data_item) ~ "production_cwt"
+  )) %>%
+  pivot_wider(
+    id_cols = c(year, state, state_ansi),
+    names_from = metric,
+    values_from = value,
+    values_fn = list(value = ~max(., na.rm = TRUE))  # Takes non-NA value when combining
+  ) %>%
+  arrange(year, state)
+
+# Replace anything that can't be cast to numeric to NA
+relevant_strawberries_wide <- relevant_strawberries_wide %>%
+  mutate(across(c(price_per_cwt, acres_harvested, production_cwt), 
+                ~as.numeric(gsub(",", "", .))))
+
+# Save the result
+write.csv(relevant_strawberries_wide, "relevant_strawberries_wide.csv", row.names = FALSE)
+```
+
+**Result will look like:**
+```
+| program | year | period        | state      | state_ansi | price_per_cwt | acres_harvested | production_cwt |
+|---------|------|---------------|------------|------------|---------------|-----------------|----------------|
+| SURVEY  | 2024 | MARKETING YEAR| CALIFORNIA | 06         | 119           | NA              | NA             |
+| SURVEY  | 2024 | YEAR          | CALIFORNIA | 06         | NA            | 45000           | NA             |
+```
+
