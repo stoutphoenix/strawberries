@@ -36,7 +36,7 @@ This project combines USDA strawberry production data with transportation shipme
 **Transportation Data:** USDA AMS Agricultural Refrigerated Truck Quarterly
 - Quarterly shipment volumes by origin and commodity
 - Measured in tons
-- Source: https://www.ams.usda.gov/services/transportation-analysis
+- Source: https://www.ams.usda.gov/services/transportation-analysis/agricultural-refrigerated-truck-quarterly-datasets
 
 ## Notes
 
