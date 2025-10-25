@@ -38,12 +38,6 @@ This project combines USDA strawberry production data with transportation shipme
 - Measured in tons
 - Source: https://www.ams.usda.gov/services/transportation-analysis
 
-## Quick Start
-
-1. Load the two primary CSV files
-2. Focus analysis on California and Florida (main producers, ~95% of U.S. production)
-3. Join datasets by matching `state` (production) to `Origin` (shipments) and `year`
-
 ## Notes
 
 - Production data is in **CWT** (hundredweight = 100 lbs)
