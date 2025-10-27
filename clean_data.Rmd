@@ -186,6 +186,7 @@ combined_data <- inner_join(
   production_data,     # Right table (annual production)
   by = c("year", "state") # The common columns to match on
 )
+write.csv(combined_data, "combined_data.csv", row.names = FALSE)
 ```
 
 ```{r}
