@@ -143,3 +143,51 @@ write.csv(relevant_strawberries_wide, "relevant_strawberries_wide.csv", row.name
 | SURVEY  | 2024 | YEAR          | CALIFORNIA | 06         | NA            | 45000           | NA             |
 ```
 
+```{r}
+production_data <- read_csv("relevant_strawberries_wide.csv")
+shipment_data <- read_csv("quarterly_vols_strawberries.csv")
+
+
+# 1. Process the Shipment (transport) data
+# The goal is to aggregate quarterly shipment data into annual totals
+# to match the annual production data.
+annual_shipments <- shipment_data %>%
+  # Group data by the Year and the Origin (state)
+  group_by(Year, Origin) %>%  
+  # Sum the 'Tons' for each group to get a yearly total per state
+  summarise(
+    total_tonnage = sum(Tons, na.rm = TRUE) # na.rm = TRUE ignores missing values
+  ) %>%
+  ungroup() %>% 
+  # Rename columns to match the 'production_data' for joining
+  # 'Year' -> 'year'
+  # 'Origin' -> 'state'
+  rename(year = Year, state = Origin) 
+
+# Now, 'annual_shipments' has 'year', 'state', and 'total_tonnage' columns.
+
+# 2. Process the Production data (Unify units)
+# The production data ('production_cwt') is in "hundredweight" (CWT).
+# The shipment data ('total_tonnage') is in "Tons".
+# We must convert them to the same unit for a valid comparison.
+# Conversion: 1 Ton = 2000 lbs, 1 CWT = 100 lbs. Therefore, 1 Ton = 20 CWT.
+production_data <- production_data %>%
+  mutate(
+    # Create a new column 'production_tons' by dividing CWT by 20
+    production_tons = production_cwt / 20 
+  )
+
+
+# 3. Join the two datasets
+# Use inner_join to combine the two tables.
+# It will only keep rows where the 'year' AND 'state' exist in BOTH tables.
+combined_data <- inner_join(
+  annual_shipments,    # Left table (annual shipments)
+  production_data,     # Right table (annual production)
+  by = c("year", "state") # The common columns to match on
+)
+```
+
+```{r}
+combined_data
+```
