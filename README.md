@@ -44,9 +44,16 @@ This project combines USDA strawberry production data with transportation shipme
 - Shipment data is in **TONS** (1 ton = 20 CWT)
 - Convert as needed: `tons = cwt / 20` or `cwt = tons * 20`
 
-##Merged Data & Analysis
+## Merged Data 
 
-- Data Merged: The two primary files (relevant_strawberries_wide.csv and quarterly_vols_strawberries.csv) have been successfully merged.
-- Aggregation Step: To make the merge possible, the quarterly shipment data (quarterly_vols_strawberries.csv) was aggregated into annual totals (total_tonnage) grouped by Year and Origin (state).
-- Unit Conversion: Production data (production_cwt) was converted from CWT to TONS (production_tons) to match the shipment data's units.
-- Final Combined Data: The resulting dataset (combined_data) contains one row per state per year, with columns for production_tons, total_tonnage, acres_harvested, and price_per_cwt, allowing for direct comparison.
+**Data Merged:** 
+- The two primary files (relevant_strawberries_wide.csv and quarterly_vols_strawberries.csv) have been successfully merged.
+
+**Aggregation Step:** 
+- To make the merge possible, the quarterly shipment data (quarterly_vols_strawberries.csv) was aggregated into annual totals (total_tonnage) grouped by Year and Origin (state).
+
+**Unit Conversion:**
+- Production data (production_cwt) was converted from CWT to TONS (production_tons) to match the shipment data's units.
+
+**Final Combined Data:** 
+- The resulting dataset (combined_data) contains one row per state per year, with columns for production_tons, total_tonnage, acres_harvested, and price_per_cwt, allowing for direct comparison.
