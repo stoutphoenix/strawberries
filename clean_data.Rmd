@@ -193,3 +193,71 @@ write.csv(combined_data, "combined_data.csv", row.names = FALSE)
 ```{r}
 combined_data
 ```
+
+```{r}
+# This keeps ALL states from production_data (the "left" table)
+# and adds shipment data (from annual_shipments) only where it matches.
+all_states_combined_data <- left_join(
+  production_data,     # Left table (annual production for ALL states)
+  annual_shipments,    # Right table (annual shipments)
+  by = c("year", "state") # Common key columns
+)
+
+# Group states into three categories: CALIFORNIA, FLORIDA, and "Other States"
+grouped_data <- all_states_combined_data %>%
+  mutate(
+    state_group = case_when(
+      state == "CALIFORNIA" ~ "CALIFORNIA",
+      state == "FLORIDA"    ~ "FLORIDA",
+      TRUE                  ~ "Other States" # All other states go here
+    )
+  )
+
+# Now we sum production/shipments for all "Other States" for each year
+annual_comparison_data <- grouped_data %>%
+  group_by(year, state_group) %>%
+  summarise(
+    # We must use na.rm = TRUE here
+    total_production = sum(production_tons, na.rm = TRUE),
+    total_shipment = sum(total_tonnage, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Visualize Production (CA vs. FL vs. "Other")
+# produtction_ct for year>2016 not added yet
+plot_production_grouped <- ggplot(annual_comparison_data, 
+                                  aes(x = year, y = total_production, color = state_group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("CALIFORNIA" = "blue", "FLORIDA" = "green", "Other States" = "red"),
+                     breaks = c("CALIFORNIA", "FLORIDA", "Other States")) +
+  labs(
+    title = "Annual Strawberry Production: CA & FL vs. All Other States",
+    x = "Year",
+    y = "Total Production (Tons)",
+    color = "State Group"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma)
+
+print(plot_production_grouped)
+
+# Visualize Shipments (CA vs. FL vs. "Other")
+# Note: "Other States" shipments will be very low, as most don't have shipment data
+plot_shipment_grouped <- ggplot(annual_comparison_data, 
+                                aes(x = year, y = total_shipment, color = state_group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("CALIFORNIA" = "blue", "FLORIDA" = "green", "Other States" = "red"),
+                     breaks = c("CALIFORNIA", "FLORIDA", "Other States")) +
+  labs(
+    title = "Annual Strawberry Shipments: CA & FL vs. All Other States",
+    x = "Year",
+    y = "Total Shipments (Tons)",
+    color = "State Group"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma)
+
+print(plot_shipment_grouped)
+```
