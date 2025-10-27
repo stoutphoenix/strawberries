@@ -184,6 +184,8 @@ combined_data
 ```
 
 ```{r}
+library(ggplot2)
+
 # This keeps ALL states from production_data (the "left" table)
 # and adds shipment data (from annual_shipments) only where it matches.
 all_states_combined_data <- left_join(
@@ -207,7 +209,7 @@ annual_comparison_data <- grouped_data %>%
   group_by(year, state_group) %>%
   summarise(
     # We must use na.rm = TRUE here
-    total_production = sum(production_tons, na.rm = TRUE),
+    total_production = sum(production_tons_total, na.rm = TRUE),
     total_shipment = sum(total_tonnage, na.rm = TRUE)
   ) %>%
   ungroup()
