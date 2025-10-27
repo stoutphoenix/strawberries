@@ -30,48 +30,31 @@ write.csv(strawberry_data, "quarterly_vols_strawberries.csv", row.names = FALSE)
 
 **Source:** <https://quickstats.nass.usda.gov/#C1D8E381-62E7-385D-8B69-015732CD24A0>
 
-**Selection Criteria:**
-
--   **Program:** Survey
-
-    -   Provides more frequent and current statistics than Census data
-    -   Better for tracking seasonal patterns and market trends
-
--   **Sector:** Crops
-
--   **Group:** Fruit & Tree Nuts
-
--   **Commodity:** Strawberries
-
--   **Categories Selected:**
-
-    -   **Production:** Strawberry volumes produced; enables direct comparison with shipment volumes
-    -   **Area Harvested:** Land used for strawberry production; provides context for production capacity by region
-    -   **Yield:** Production per acre; explains efficiency and regional productivity differences
-    -   **Price Received:** Market value; helps explain economic factors affecting transportation decisions
-    -   **Condition:** Quality ratings; explains variations in marketability and shipment patterns
+**Selection Criteria:** - **Program:** Survey - Provides more frequent and current statistics than Census data - Better for tracking seasonal patterns and market trends - **Sector:** Crops - **Group:** Fruit & Tree Nuts - **Commodity:** Strawberries - **Categories Selected:** - **Production:** Strawberry volumes produced; enables direct comparison with shipment volumes - **Price Received:** Market value; helps explain economic factors affecting transportation decisions
 
 -   **Data Items:**
-
-    -   **STRAWBERRIES - PRODUCTION, MEASURED IN TONS**
-        -   Total strawberry production by state in tons; matches unit of measurement in shipment data for direct comparison
-    -   **STRAWBERRIES - ACRES HARVESTED**
-        -   Total acreage dedicated to strawberry production; indicates production scale and regional importance
-    -   **STRAWBERRIES - YIELD, MEASURED IN TONS / ACRE**
-        -   Productivity metric; reveals efficiency differences across states that may affect transportation patterns
     -   **STRAWBERRIES - PRICE RECEIVED, MEASURED IN \$ / CWT**
-        -   Farm-gate prices; explains economic incentives for transportation and market decisions (CWT = hundredweight = 100 lbs)
+        -   Overall average farm-gate price across all strawberry uses
+    -   **STRAWBERRIES, FRESH MARKET - PRICE RECEIVED, MEASURED IN \$ / CWT**
+        -   Price specifically for fresh market strawberries; most relevant for refrigerated shipment analysis since fresh berries command higher prices and require immediate refrigerated transport
+    -   **STRAWBERRIES, PROCESSING - PRICE RECEIVED, MEASURED IN \$ / CWT**
+        -   Price for processing strawberries; typically lower than fresh market prices as these berries are destined for freezing, jam production, etc.
+    -   **STRAWBERRIES - PRODUCTION, MEASURED IN \$**
+        -   Total production value across all uses; useful for calculating total volume when combined with price data
+    -   **STRAWBERRIES - PRODUCTION, MEASURED IN CWT**
+        -   Total production volume in hundredweight (CWT = 100 lbs); includes both fresh market and processing
+    -   **STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN \$**
+        -   Dollar value of fresh market production specifically; most relevant for comparison with refrigerated shipment data
     -   **STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN CWT**
-        -   Fresh market production specifically; most relevant since shipment data tracks fresh strawberries transported to market, not processing strawberries
+        -   Fresh market production volume; PRIMARY metric for direct comparison with refrigerated truck shipment data, as fresh berries are perishable and require refrigerated transport
+    -   **STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN \$**
+        -   Dollar value of processing strawberries; less relevant for refrigerated shipment analysis
+    -   **STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN CWT**
+        -   Volume of strawberries destined for processing; not directly comparable to refrigerated shipments as these may be frozen on-site or follow different logistics
+    -   **STRAWBERRIES, UTILIZED - PRODUCTION, MEASURED IN CWT**
+        -   Total utilized production (fresh market + processing); represents all strawberries that entered commercial channels
 
--   **Geographic Level:** STATE
-
-    -   Matches the origin locations in transportation shipment data
-    -   Enables state-by-state analysis of production vs. shipment volumes
-
--   **Period Type:** ANNUAL
-
-    -   Provides yearly totals for comparison with aggregated quarterly shipment data
+**Note on Data Strategy:** - Fresh market production metrics are the primary focus for refrigerated shipment analysis - Price data enables inference of missing production volumes using the formula: Production (CWT) = Production ($) / Price ($/CWT) - Separate fresh market and processing categories allow for more accurate analysis of transportation patterns, as only fresh market strawberries typically move via refrigerated trucks immediately after harvest
 
 ```{r}
 library(janitor)
@@ -86,63 +69,69 @@ relevant_strawberries <- clean_names(relevant_strawberries)
 relevant_strawberries <- relevant_strawberries %>%
   select(where(~!all(is.na(.))))
 
-# Remove columns with no variation (all values are identical)
-# These columns provide no analytical value:
-#   - geo_level: all "STATE"
-#   - watershed_code: all "00000000"
-#   - commodity: all "STRAWBERRIES"
-#   - domain: all "TOTAL"
-#   - domain_category: all "NOT SPECIFIED"
-
+# Remove columns with no variation
 relevant_strawberries <- relevant_strawberries %>%
   select(-c(geo_level, watershed_code, commodity, domain, domain_category))
 
 # Pivot the data to wide format
 relevant_strawberries_wide <- relevant_strawberries %>%
-  # Create shorter, cleaner column names from data_item
   mutate(metric = case_when(
-    grepl("PRICE RECEIVED", data_item) ~ "price_per_cwt",
-    grepl("ACRES HARVESTED", data_item) ~ "acres_harvested",
-    grepl("FRESH MARKET - PRODUCTION", data_item) ~ "production_cwt"
+    # Price metrics
+    data_item == "STRAWBERRIES - PRICE RECEIVED, MEASURED IN $ / CWT" ~ "price_overall",
+    data_item == "STRAWBERRIES, FRESH MARKET - PRICE RECEIVED, MEASURED IN $ / CWT" ~ "price_fresh",
+    data_item == "STRAWBERRIES, PROCESSING - PRICE RECEIVED, MEASURED IN $ / CWT" ~ "price_processing",
+    
+    # Production in dollars
+    data_item == "STRAWBERRIES - PRODUCTION, MEASURED IN $" ~ "production_dollars_total",
+    data_item == "STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN $" ~ "production_dollars_fresh",
+    data_item == "STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN $" ~ "production_dollars_processing",
+    
+    # Production in CWT
+    data_item == "STRAWBERRIES - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_total",
+    data_item == "STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_fresh",
+    data_item == "STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_processing",
+    data_item == "STRAWBERRIES, UTILIZED - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_utilized",
+    
+    TRUE ~ NA_character_
   )) %>%
-  # Pivot wider so each metric becomes its own column
-  pivot_wider(
-    id_cols = c(program, year, period, state, state_ansi),
-    names_from = metric,
-    values_from = value
-  )
-
-relevant_strawberries_wide <- relevant_strawberries %>%
-  mutate(metric = case_when(
-    grepl("PRICE RECEIVED", data_item) ~ "price_per_cwt",
-    grepl("ACRES HARVESTED", data_item) ~ "acres_harvested",
-    grepl("FRESH MARKET - PRODUCTION", data_item) ~ "production_cwt"
-  )) %>%
+  filter(!is.na(metric)) %>%
   pivot_wider(
     id_cols = c(year, state, state_ansi),
     names_from = metric,
     values_from = value,
-    values_fn = list(value = ~max(., na.rm = TRUE))  # Takes non-NA value when combining
+    values_fn = list(value = ~first(na.omit(.)))  # Takes first non-NA value
   ) %>%
   arrange(year, state)
 
-# Replace anything that can't be cast to numeric to NA
+# Convert all numeric columns
 relevant_strawberries_wide <- relevant_strawberries_wide %>%
-  mutate(across(c(price_per_cwt, acres_harvested, production_cwt), 
+  mutate(across(c(price_overall, price_fresh, price_processing,
+                  production_dollars_total, production_dollars_fresh, production_dollars_processing,
+                  production_cwt_total, production_cwt_fresh, production_cwt_processing, 
+                  production_cwt_utilized),
                 ~as.numeric(gsub(",", "", .))))
+
+# Calculate inferred production volumes where direct measurements are missing
+relevant_strawberries_wide <- relevant_strawberries_wide %>%
+  mutate(
+    # Infer fresh market CWT from dollars and price when direct measurement is missing
+    production_cwt_fresh_inferred = production_dollars_fresh / price_fresh,
+    
+    # Infer processing CWT from dollars and price when direct measurement is missing
+    production_cwt_processing_inferred = production_dollars_processing / price_processing,
+    
+    # Infer total CWT from dollars and overall price when direct measurement is missing
+    production_cwt_total_inferred = production_dollars_total / price_overall
+  )
+
 
 # Save the result
 write.csv(relevant_strawberries_wide, "relevant_strawberries_wide.csv", row.names = FALSE)
+
 ```
 
-**Result will look like:**
 
-```         
-| program | year | period        | state      | state_ansi | price_per_cwt | acres_harvested | production_cwt |
-|---------|------|---------------|------------|------------|---------------|-----------------|----------------|
-| SURVEY  | 2024 | MARKETING YEAR| CALIFORNIA | 06         | 119           | NA              | NA             |
-| SURVEY  | 2024 | YEAR          | CALIFORNIA | 06         | NA            | 45000           | NA             |
-```
+## Combine shipment and production data
 
 ```{r}
 production_data <- read_csv("relevant_strawberries_wide.csv")
@@ -175,7 +164,7 @@ annual_shipments <- shipment_data %>%
 production_data <- production_data %>%
   mutate(
     # Create a new column 'production_tons' by dividing CWT by 20
-    production_tons = production_cwt / 20 
+    production_tons_total = production_cwt_total / 20 
   )
 
 
