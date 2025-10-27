@@ -1,0 +1,25 @@
+---
+title: "Strawberry analysis"
+format: html
+editor: visual
+---
+
+```{r}
+df <- read.csv('~/Desktop/MA615/strawberry-new/combined_data.csv')
+library(ggplot2)
+library(dplyr)
+
+df_ratio <- df %>%
+  filter(state %in% c("CALIFORNIA", "FLORIDA")) %>%
+  mutate(ratio = total_tonnage / production_tons_total)
+
+ggplot(df_ratio, aes(x = year, y = ratio, color = state)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Shipment-to-Production Ratio Over Time",
+       x = "Year",
+       y = "Shipment / Production Ratio") +
+  theme_minimal()
+
+colnames(df)
+```
