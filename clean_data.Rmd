@@ -72,7 +72,7 @@ write.csv(strawberry_data, "quarterly_vols_strawberries.csv", row.names = FALSE)
 -   **Period Type:** ANNUAL
 
     -   Provides yearly totals for comparison with aggregated quarterly shipment data
-    
+
 ```{r}
 library(janitor)
 library(dplyr)
@@ -136,7 +136,8 @@ write.csv(relevant_strawberries_wide, "relevant_strawberries_wide.csv", row.name
 ```
 
 **Result will look like:**
-```
+
+```         
 | program | year | period        | state      | state_ansi | price_per_cwt | acres_harvested | production_cwt |
 |---------|------|---------------|------------|------------|---------------|-----------------|----------------|
 | SURVEY  | 2024 | MARKETING YEAR| CALIFORNIA | 06         | 119           | NA              | NA             |
