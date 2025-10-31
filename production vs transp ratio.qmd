@@ -24,7 +24,9 @@ ggplot(df_ratio, aes(x = year, y = ratio, color = state)) +
 
 ```
 
-The shipment to production ratio formula is total_shipment/total_production:
+The shipment to production ratio **formula** is :
+
+**total_shipment/total_production:**
 
 A ratio **greater than 1** means more strawberries were shipped than produced, which could happen if shipments include imports or inventory from previous years.
 
