@@ -1,0 +1,101 @@
+---
+title: "Price_Analysis"
+author: "hyungu"
+date: "2025-10-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analysis: Price vs. Production Volume (California vs. Florida)
+
+After identifying California and Florida as the dominant producers, the analysis now shifts to the economic differences between their markets. We first investigate the average price of strawberries from each state.
+
+### Average Price Comparison
+
+**Objective:** To determine the baseline average price for strawberries (\$ / CWT) in each state.
+
+**Method:** The `combined_data.csv` file, which contains data only for states with both production and shipment records (primarily CA and FL), is used. We group the data by `state` and calculate the `mean` of the `price_overall` column.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# df is loaded from the previous chunk, but reloading is good practice
+# in a self-contained Rmd section.
+df <- read.csv("combined_data.csv")
+
+# Calculate average price
+avg_price <- df %>%
+      group_by(state) %>%
+      summarise(mean_price_overall = mean(price_overall, na.rm = TRUE))
+
+# Create the bar plot
+plot2 <- ggplot(data = avg_price, aes(x = reorder(state, -mean_price_overall), y = mean_price_overall, fill = state))+
+      geom_col() + 
+      labs(title = "Average Overall Price by State", 
+           x = "State", 
+           y = "Average Overall Price ($ / CWT)") +
+      theme_minimal() +
+      theme(legend.position = "none") 
+
+print(plot2)
+```
+
+**Finding 1:** Florida's Prices are Significantly Higher
+
+-   The bar chart clearly shows that strawberries from Florida command a significantly higher average price (approximately \$50 higher per CWT) than those from California.
+
+### Relationship Between Production Volume and Price
+
+**Objective:** To explore the hypothesis that this price difference is related to production volume (tonnage).
+
+**Method:** We create a scatter plot of total_tonnage (x-axis) versus price_overall (y-axis). A separate linear regression line (geom_smooth) is fitted for each state to visualize the relationship between volume and price.
+
+```{r}
+# This code uses the 'df' data frame already loaded
+plot3 <- ggplot(data = df, aes(x = total_tonnage, y = price_overall)) +
+  
+  # Original scatter plot (color/shape by state)
+  geom_point(aes(color = state, shape = state), size = 3, alpha = 0.8) +
+  
+  # --- Analysis 1: Trend line by state (Linear Regression) ---
+  # Adding color=state to aes() draws a separate trend line per state.
+  geom_smooth(aes(color = state, group = state), 
+              method = "lm",  # lm = Linear Model
+              se = FALSE,     # se = FALSE (remove confidence interval)
+              linewidth = 1) +
+  
+  
+  labs(title = "Price vs. Tonnage with Regression Lines",
+       x = "Total Tonnage (Tons)",
+       y = "Overall Price ($ / CWT)", 
+       color = "State", 
+       shape = "State") +
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma) + # Format axes
+  scale_x_continuous(labels = scales::comma)
+
+print(plot3)
+```
+
+**Finding 2:** Different Price-Volume Dynamics
+
+-   The scatter plot reveals two key insights:
+
+-   Production Scale: It confirms the finding from Section 4: California (blue) operates at a much higher production volume (tonnage) than Florida (red).
+
+-   Price Sensitivity: The regression lines show that not only does Florida maintain a higher average price at lower volumes, but its price also appears to increase more steeply with production compared to California's.
+
+### Initial Hypotheses for Analysis
+
+While this analysis does not prove causation, these findings lead to several initial hypotheses for the observed price differences:
+
+**Scarcity and Market Niche:** Florida's significantly lower production volume may create a scarcity effect or cater to a premium market niche, allowing it to command higher prices.
+
+**Logistical / Market Factors:** California's vast production may be geared towards broader national and international distribution, potentially with different pricing structures or logistical efficiencies (e.g., related to import/export) that result in a lower average price.
+
+**Climate and Growing Conditions:** The distinct climates in California and Florida affect growing seasons, fruit quality, and production costs. California's climate may be more favorable for high-volume, consistent production, leading to different market dynamics than in Florida.

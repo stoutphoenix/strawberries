@@ -220,7 +220,7 @@ plot_production_grouped <- ggplot(annual_comparison_data,
                                   aes(x = year, y = total_production, color = state_group)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 3) +
-  scale_color_manual(values = c("CALIFORNIA" = "blue", "FLORIDA" = "green", "Other States" = "red"),
+  scale_color_manual(values = c("CALIFORNIA" = "lightblue", "FLORIDA" = "lightgreen", "Other States" = "salmon"),
                      breaks = c("CALIFORNIA", "FLORIDA", "Other States")) +
   labs(
     title = "Annual Strawberry Production: CA & FL vs. All Other States",
@@ -239,7 +239,7 @@ plot_shipment_grouped <- ggplot(annual_comparison_data,
                                 aes(x = year, y = total_shipment, color = state_group)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 3) +
-  scale_color_manual(values = c("CALIFORNIA" = "blue", "FLORIDA" = "green", "Other States" = "red"),
+  scale_color_manual(values = c("CALIFORNIA" = "lightblue", "FLORIDA" = "lightgreen", "Other States" = "salmon"),
                      breaks = c("CALIFORNIA", "FLORIDA", "Other States")) +
   labs(
     title = "Annual Strawberry Shipments: CA & FL vs. All Other States",
