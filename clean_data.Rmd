@@ -8,17 +8,33 @@ date: "2025-10-25"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Filter quarterly volume transport data
+# Report: Analysis of U.S. Strawberry Production and Refrigerated Transportation
 
-Source: <https://www.ams.usda.gov/services/transportation-analysis/agricultural-refrigerated-truck-quarterly-datasets>
+## 1. Project Objective
 
-quarterly_vols_all: "Quarterly Shipment Volumes by Origin and Commodity" Quarterly totals of refrigerated truck load volumes (tonnage) from U.S. origin shipping areas and cross-border movements from Mexico and Canada for individual fruit and vegetable varieties. Entries marked zero tons were registered commodity movements, but the sum of all shipment volumes totaled less than 1. Source: Specialty Crops/Market News/AMS/USDA
+-   The goal of this analysis is to source, process, and integrate two distinct agricultural datasets from the USDA to compare annual strawberry production volumes with quarterly refrigerated shipment volumes. This foundational work aims to identify key trends and concentrations in the strawberry transportation market, establishing a basis for more detailed logistics analysis.
 
-### Filter to only strawberries
+## 2. Data Sources and Methodology
+
+Two primary data sources were used:
+
+**USDA AMS (Agricultural Marketing Service):** Provides quarterly refrigerated truck shipment volumes (in tonnage) by origin and commodity.
+
+**USDA NASS (National Agricultural Statistics Service):** Provides detailed annual survey data on crop production and pricing.
+
+The methodology involved a multi-step process to clean, transform, and merge these datasets.
+
+## 3. Data Filtering and Cleaning Steps
+
+**Source:** <https://www.ams.usda.gov/services/transportation-analysis/agricultural-refrigerated-truck-quarterly-datasets>
+
+**quarterly_vols_all:** "Quarterly Shipment Volumes by Origin and Commodity" - Quarterly totals of refrigerated truck load volumes (tonnage) from U.S. origin shipping areas and cross-border movements from Mexico and Canada for individual fruit and vegetable varieties. Entries marked zero tons were registered commodity movements, but the sum of all shipment volumes totaled less than 1. Source: Specialty Crops/Market News/AMS/USDA
+
+### 3.1 Filter to only strawberries
 
 ```{r}
 library(dplyr)
-df <- read.csv("quarterly_vols_all.csv")
+df <- read.csv("datasets/quarterly_vols_all.csv")
 
 strawberry_data <- df %>%
   filter(grepl("st[r]?awberr(y|ies)", Commodity, ignore.case = TRUE))
@@ -26,7 +42,7 @@ strawberry_data <- df %>%
 write.csv(strawberry_data, "quarterly_vols_strawberries.csv", row.names = FALSE)
 ```
 
-## Clean USDA Strawberry Data
+### 3.2 Clean USDA Strawberry Data
 
 **Source:** <https://quickstats.nass.usda.gov/#C1D8E381-62E7-385D-8B69-015732CD24A0>
 
@@ -62,7 +78,7 @@ library(dplyr)
 library(readr)
 library(tidyr)
 
-relevant_strawberries <- read_csv("relevant_strawberries.csv")
+relevant_strawberries <- read_csv("datasets/relevant_strawberries.csv")
 relevant_strawberries <- clean_names(relevant_strawberries)
 
 # Remove columns with all NAs
@@ -130,12 +146,23 @@ write.csv(relevant_strawberries_wide, "relevant_strawberries_wide.csv", row.name
 
 ```
 
+### 3.3 Combine Shipment and Production Data
 
-## Combine shipment and production data
+#### **Objective:**
+
+-   To merge the annual shipment data and annual production data into a single, unified dataset for comparison.
+
+#### **Method:**
+
+**1. Aggregate Shipments:** The quarterly_vols_strawberries.csv is loaded. It is grouped by Year and Origin (state), and the Tons are summed to create an annual total_tonnage per state.
+
+**2. Standardize Units:** The relevant_strawberries_wide.csv (production) data is loaded. A new column, production_tons_total, is created by converting production_cwt_total to tons (1 Ton = 20 CWT, so $CWT / 20$).
+
+**3. Join:** An inner_join is performed to combine the shipment and production tables. This join matches rows based on year and state, meaning the final dataset (combined_data.csv) will only contain states and years where both production and shipment data exist.
 
 ```{r}
-production_data <- read_csv("relevant_strawberries_wide.csv")
-shipment_data <- read_csv("quarterly_vols_strawberries.csv")
+production_data <- read_csv("datasets/relevant_strawberries_wide.csv")
+shipment_data <- read_csv("datasets/quarterly_vols_strawberries.csv")
 
 
 # 1. Process the Shipment (transport) data
@@ -179,9 +206,21 @@ combined_data <- inner_join(
 write.csv(combined_data, "combined_data.csv", row.names = FALSE)
 ```
 
-```{r}
-combined_data
-```
+## 4. Analysis & Visualization: Market Concentration
+
+### **Objective:**
+
+-   To visualize the national strawberry market to identify key production and shipment hubs.
+
+### **Method:**
+
+**1. Join Strategy:** A left_join is used, keeping all states from the production_data and adding annual_shipments data where it exists. This ensures we can see states that have production but no recorded (or negligible) shipments.
+
+**2. Grouping:** States are categorized into three groups: "CALIFORNIA", "FLORIDA", and "Other States" using case_when.
+
+**3. Aggregation:** The data is grouped by year and state_group to sum the total production and shipment volumes for each group.
+
+**4. Visualization:** Two line plots are generated using ggplot2 to compare the annual production and shipment volumes for these three groups.
 
 ```{r}
 library(ggplot2)
@@ -252,3 +291,23 @@ plot_shipment_grouped <- ggplot(annual_comparison_data,
 
 print(plot_shipment_grouped)
 ```
+
+### 4.1. Elaboration on Market Concentration Findings
+
+The two line plots generated from the `annual_comparison_data` provide a stark and immediate justification for the project's analytical focus. The finding that all significant analysis should be on California and Florida is supported by the following detailed observations:
+
+**1. Overwhelming Production Dominance (Graph 1):**
+
+-   **Scale:** The Y-axis (Total Production) for California (blue line) ranges from \~700,000 tons to nearly 1,500,000 tons. In contrast, Florida's production (green line) hovers at a much smaller scale, roughly between 100,000 and 150,000 tons.
+-   **Negligibility:** The "Other States" category (red line) is visually indistinguishable from the zero-axis. This demonstrates that the combined production of all other 48 states is statistically insignificant compared to the output of just California or Florida.
+
+**2. Identical Dominance in Transportation (Graph 2):**
+
+-   **Mirroring Production:** The "Annual Strawberry Shipments" graph, which tracks the refrigerated truck movements central to our analysis, tells the exact same story.
+-   **Logistical Hubs:** California's shipments (blue line) completely dominate the transportation network, growing from \~500,000 to nearly 1,000,000 tons. Florida (green line) represents the only other significant shipping origin.
+-   **Statistical Zero:** The "Other States" (red line) again registers at zero. This is a critical finding: **there are virtually no refrigerated strawberry shipments originating from outside California or Florida** according to this dataset.
+
+**3. Key Analytical Justification:**
+
+-   These visualizations are not just descriptive; they are **prescriptive**. They confirm that any effort spent analyzing data from "Other States" would be irrelevant to understanding the national strawberry transportation market.
+-   The U.S. strawberry market is, in effect, a **two-state system**. This finding allows us to simplify the analysis and focus all subsequent efforts on comparing the production volumes, pricing, and transportation logistics of California and Florida, which together account for nearly 100% of the relevant market.
