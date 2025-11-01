@@ -65,10 +65,15 @@ annual totals (total_tonnage) grouped by Year and Origin (state).
 **Unit Conversion:** - Production data (production_cwt) was converted
 from CWT to TONS (production_tons) to match the shipment data's units.
 
+<<<<<<< HEAD
 **Final Combined Data:** - The resulting dataset (combined_data)
 contains one row per state per year, with columns for production_tons,
 total_tonnage, acres_harvested, and price_per_cwt, allowing for direct
 comparison.
+=======
+**Final Combined Data:** 
+- The resulting dataset (combined_data) contains one row per state per year, with columns for production_tons, total_tonnage, acres_harvested, and price_per_cwt, allowing for direct comparison.
+>>>>>>> 825ff3f5196f4a9576e018447d293f459f6ba766
 
 ## Analysis
 
