@@ -10,11 +10,11 @@ transportation shipment data to analyze farm-to-market patterns.
 ### Data Files (CSV)
 
 **Primary Analysis Files:** - **`relevant_strawberries_wide.csv`** -
-*START HERE* - Cleaned USDA NASS production data in wide format -
+- Cleaned USDA NASS production data in wide format -
 Contains: year, state, price per CWT, acres harvested, production in
 CWT - One row per state per year - Ready for analysis and merging
 
--   **`quarterly_vols_strawberries.csv`** - *START HERE*
+-   **`quarterly_vols_strawberries.csv`** 
     -   Filtered transportation data for strawberries only
     -   Contains: year, quarter, origin state, commodity, tonnage
         shipped
