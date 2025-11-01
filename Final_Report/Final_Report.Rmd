@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Report: Analysis of U.S. Strawberry Production and Refrigerated Transportation
 
 ## By Tim, Pheonix, Yuwen
- 
+
 ## 1. Project Objective
 
 -   The goal of this analysis is to source, process, and integrate two distinct agricultural datasets from the USDA to compare annual strawberry production volumes with quarterly refrigerated shipment volumes. This foundational work aims to identify key trends and concentrations in the strawberry transportation market, establishing a basis for more detailed logistics analysis.
@@ -163,8 +163,8 @@ write.csv(relevant_strawberries_wide, "relevant_strawberries_wide.csv", row.name
 **3. Join:** An inner_join is performed to combine the shipment and production tables. This join matches rows based on year and state, meaning the final dataset (combined_data.csv) will only contain states and years where both production and shipment data exist.
 
 ```{r}
-production_data <- read_csv("datasets/relevant_strawberries_wide.csv")
-shipment_data <- read_csv("datasets/quarterly_vols_strawberries.csv")
+production_data <-read.csv("Cleaned_datasets/relevant_strawberries_wide.csv")
+shipment_data <- read.csv("Cleaned_datasets/quarterly_vols_strawberries.csv")
 
 
 # 1. Process the Shipment (transport) data
@@ -411,8 +411,7 @@ While this analysis does not prove causation, these findings lead to several ini
 
 ```{r cars, echo=FALSE}
 pacman::p_load(readr)
-df <- read_csv('combined_data.csv')
-
+df <- read_csv("Cleaned_datasets/combined_data.csv")
 ```
 
 ```{r}
@@ -466,7 +465,7 @@ This divergence suggests California's production increasingly serves processed m
 ## 7 Shipment VS Production ratio Analysis:
 
 ```{r}
-df <- read.csv('~/Desktop/MA615/strawberry-new/combined_data.csv')
+df <- read.csv('Cleaned_datasets/combined_data.csv')
 library(ggplot2)
 library(dplyr)
 
@@ -506,3 +505,29 @@ For California, the ratio consistently stays below 1, meaning it never ships mor
 In contrast, Florida’s ratio is much more volatile. It first exceeded 1 in 2013, meaning it shipped more than it produced that year—likely due to imports or the release of stored inventory. The ratio peaks at 1.2 in 2017, reflecting high shipment activity, possibly driven by strong demand or favorable growing conditions. Afterward, it drops back to 0.78, showing shipments realigning with production.
 
 In summary, California demonstrates a stable and predictable shipping pattern, while Florida shows more aggressive and variable shipment behavior. These differences likely reflect distinct strategies in production, storage, and market response between the two states.
+
+## 8. Conclusion
+
+This analysis successfully achieved its objective by sourcing, processing, and integrating two disparate USDA datasets—NASS production statistics and AMS refrigerated shipment data—to build a unified model of the U.S. strawberry market.
+
+The data processing and cleaning revealed a critical and prescriptive insight that guided the entire analysis: the U.S. strawberry production and refrigerated transportation networks are, in effect, a two-state system. The visualizations in Section 4 demonstrated that California and Florida account for nearly 100% of all relevant activity, rendering the combined production and shipment volumes of all "Other States" statistically insignificant.
+
+By focusing on these two key states, the analysis uncovered two fundamentally different market structures:
+
+**California: The High-Volume Production Powerhouse**
+
+-   California dominates the market in sheer volume, operating at a scale that dwarfs all other states.
+
+-   This high volume corresponds to a lower average price compared to Florida.
+
+-   Critically, California's shipment-to-production ratio remains stable and consistently below 1.0 (typically 0.6–0.8). This, combined with a shipment-to-production slope of just 0.507, provides strong evidence that a significant portion of its massive output is diverted to channels other than fresh refrigerated transport, such as processing, freezing, or alternative distribution.
+
+**Florida: The High-Price, Logistically-Volatile Hub**
+
+-   Florida operates as a lower-volume, higher-price market, commanding a significant premium per CWT.
+
+-   Its market behavior is highly volatile. Most notably, its shipment-to-production ratio frequently exceeds 1.0, peaking at 1.2 in 2017.
+
+-   This finding implies that Florida's refrigerated shipment data does not just represent its own production. It strongly suggests Florida acts as a key logistical hub, handling and shipping inventory from previous periods or (more likely) imported strawberries to meet market demand, especially during its peak season.
+
+In summary, the U.S. strawberry supply chain is not a single entity but a tale of two distinct models. California behaves as a stable, diversified producer, while Florida acts as a fast-moving, high-stakes, and logistically complex hub. This foundational work provides a clear, data-driven framework for any future analysis of transportation logistics, market timing, or economic factors within this industry.
