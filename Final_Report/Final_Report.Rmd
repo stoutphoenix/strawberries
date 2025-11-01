@@ -1,0 +1,462 @@
+---
+title: "Final Report"
+output: pdf_document
+date: "2025-10-31"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Report: Analysis of U.S. Strawberry Production and Refrigerated Transportation
+
+## 1. Project Objective
+
+-   The goal of this analysis is to source, process, and integrate two distinct agricultural datasets from the USDA to compare annual strawberry production volumes with quarterly refrigerated shipment volumes. This foundational work aims to identify key trends and concentrations in the strawberry transportation market, establishing a basis for more detailed logistics analysis.
+
+## 2. Data Sources and Methodology
+
+Two primary data sources were used:
+
+**USDA AMS (Agricultural Marketing Service):** Provides quarterly refrigerated truck shipment volumes (in tonnage) by origin and commodity.
+
+**USDA NASS (National Agricultural Statistics Service):** Provides detailed annual survey data on crop production and pricing.
+
+The methodology involved a multi-step process to clean, transform, and merge these datasets.
+
+## 3. Data Filtering and Cleaning Steps
+
+**Source:** <https://www.ams.usda.gov/services/transportation-analysis/agricultural-refrigerated-truck-quarterly-datasets>
+
+**quarterly_vols_all:** "Quarterly Shipment Volumes by Origin and Commodity" - Quarterly totals of refrigerated truck load volumes (tonnage) from U.S. origin shipping areas and cross-border movements from Mexico and Canada for individual fruit and vegetable varieties. Entries marked zero tons were registered commodity movements, but the sum of all shipment volumes totaled less than 1. Source: Specialty Crops/Market News/AMS/USDA
+
+### 3.1 Filter to only strawberries
+
+```{r}
+library(dplyr)
+df <- read.csv("datasets/quarterly_vols_all.csv")
+
+strawberry_data <- df %>%
+  filter(grepl("st[r]?awberr(y|ies)", Commodity, ignore.case = TRUE))
+
+write.csv(strawberry_data, "quarterly_vols_strawberries.csv", row.names = FALSE)
+```
+
+### 3.2 Clean USDA Strawberry Data
+
+**Source:** <https://quickstats.nass.usda.gov/#C1D8E381-62E7-385D-8B69-015732CD24A0>
+
+**Selection Criteria:** - **Program:** Survey - Provides more frequent and current statistics than Census data - Better for tracking seasonal patterns and market trends - **Sector:** Crops - **Group:** Fruit & Tree Nuts - **Commodity:** Strawberries - **Categories Selected:** - **Production:** Strawberry volumes produced; enables direct comparison with shipment volumes - **Price Received:** Market value; helps explain economic factors affecting transportation decisions
+
+-   **Data Items:**
+    -   **STRAWBERRIES - PRICE RECEIVED, MEASURED IN \$ / CWT**
+        -   Overall average farm-gate price across all strawberry uses
+    -   **STRAWBERRIES, FRESH MARKET - PRICE RECEIVED, MEASURED IN \$ / CWT**
+        -   Price specifically for fresh market strawberries; most relevant for refrigerated shipment analysis since fresh berries command higher prices and require immediate refrigerated transport
+    -   **STRAWBERRIES, PROCESSING - PRICE RECEIVED, MEASURED IN \$ / CWT**
+        -   Price for processing strawberries; typically lower than fresh market prices as these berries are destined for freezing, jam production, etc.
+    -   **STRAWBERRIES - PRODUCTION, MEASURED IN \$**
+        -   Total production value across all uses; useful for calculating total volume when combined with price data
+    -   **STRAWBERRIES - PRODUCTION, MEASURED IN CWT**
+        -   Total production volume in hundredweight (CWT = 100 lbs); includes both fresh market and processing
+    -   **STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN \$**
+        -   Dollar value of fresh market production specifically; most relevant for comparison with refrigerated shipment data
+    -   **STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN CWT**
+        -   Fresh market production volume; PRIMARY metric for direct comparison with refrigerated truck shipment data, as fresh berries are perishable and require refrigerated transport
+    -   **STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN \$**
+        -   Dollar value of processing strawberries; less relevant for refrigerated shipment analysis
+    -   **STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN CWT**
+        -   Volume of strawberries destined for processing; not directly comparable to refrigerated shipments as these may be frozen on-site or follow different logistics
+    -   **STRAWBERRIES, UTILIZED - PRODUCTION, MEASURED IN CWT**
+        -   Total utilized production (fresh market + processing); represents all strawberries that entered commercial channels
+
+**Note on Data Strategy:** - Fresh market production metrics are the primary focus for refrigerated shipment analysis - Price data enables inference of missing production volumes using the formula: Production (CWT) = Production ($) / Price ($/CWT) - Separate fresh market and processing categories allow for more accurate analysis of transportation patterns, as only fresh market strawberries typically move via refrigerated trucks immediately after harvest
+
+```{r}
+library(janitor)
+library(dplyr)
+library(readr)
+library(tidyr)
+
+relevant_strawberries <- read_csv("datasets/relevant_strawberries.csv")
+relevant_strawberries <- clean_names(relevant_strawberries)
+
+# Remove columns with all NAs
+relevant_strawberries <- relevant_strawberries %>%
+  select(where(~!all(is.na(.))))
+
+# Remove columns with no variation
+relevant_strawberries <- relevant_strawberries %>%
+  select(-c(geo_level, watershed_code, commodity, domain, domain_category))
+
+# Pivot the data to wide format
+relevant_strawberries_wide <- relevant_strawberries %>%
+  mutate(metric = case_when(
+    # Price metrics
+    data_item == "STRAWBERRIES - PRICE RECEIVED, MEASURED IN $ / CWT" ~ "price_overall",
+    data_item == "STRAWBERRIES, FRESH MARKET - PRICE RECEIVED, MEASURED IN $ / CWT" ~ "price_fresh",
+    data_item == "STRAWBERRIES, PROCESSING - PRICE RECEIVED, MEASURED IN $ / CWT" ~ "price_processing",
+    
+    # Production in dollars
+    data_item == "STRAWBERRIES - PRODUCTION, MEASURED IN $" ~ "production_dollars_total",
+    data_item == "STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN $" ~ "production_dollars_fresh",
+    data_item == "STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN $" ~ "production_dollars_processing",
+    
+    # Production in CWT
+    data_item == "STRAWBERRIES - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_total",
+    data_item == "STRAWBERRIES, FRESH MARKET - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_fresh",
+    data_item == "STRAWBERRIES, PROCESSING - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_processing",
+    data_item == "STRAWBERRIES, UTILIZED - PRODUCTION, MEASURED IN CWT" ~ "production_cwt_utilized",
+    
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(metric)) %>%
+  pivot_wider(
+    id_cols = c(year, state, state_ansi),
+    names_from = metric,
+    values_from = value,
+    values_fn = list(value = ~first(na.omit(.)))  # Takes first non-NA value
+  ) %>%
+  arrange(year, state)
+
+# Convert all numeric columns
+relevant_strawberries_wide <- relevant_strawberries_wide %>%
+  mutate(across(c(price_overall, price_fresh, price_processing,
+                  production_dollars_total, production_dollars_fresh, production_dollars_processing,
+                  production_cwt_total, production_cwt_fresh, production_cwt_processing, 
+                  production_cwt_utilized),
+                ~as.numeric(gsub(",", "", .))))
+
+# Calculate inferred production volumes where direct measurements are missing
+relevant_strawberries_wide <- relevant_strawberries_wide %>%
+  mutate(
+    # Infer fresh market CWT from dollars and price when direct measurement is missing
+    production_cwt_fresh_inferred = production_dollars_fresh / price_fresh,
+    
+    # Infer processing CWT from dollars and price when direct measurement is missing
+    production_cwt_processing_inferred = production_dollars_processing / price_processing,
+    
+    # Infer total CWT from dollars and overall price when direct measurement is missing
+    production_cwt_total_inferred = production_dollars_total / price_overall
+  )
+
+
+# Save the result
+write.csv(relevant_strawberries_wide, "relevant_strawberries_wide.csv", row.names = FALSE)
+
+```
+
+### 3.3 Combine Shipment and Production Data
+
+#### **Objective:**
+
+-   To merge the annual shipment data and annual production data into a single, unified dataset for comparison.
+
+#### **Method:**
+
+**1. Aggregate Shipments:** The quarterly_vols_strawberries.csv is loaded. It is grouped by Year and Origin (state), and the Tons are summed to create an annual total_tonnage per state.
+
+**2. Standardize Units:** The relevant_strawberries_wide.csv (production) data is loaded. A new column, production_tons_total, is created by converting production_cwt_total to tons (1 Ton = 20 CWT, so $CWT / 20$).
+
+**3. Join:** An inner_join is performed to combine the shipment and production tables. This join matches rows based on year and state, meaning the final dataset (combined_data.csv) will only contain states and years where both production and shipment data exist.
+
+```{r}
+production_data <- read_csv("datasets/relevant_strawberries_wide.csv")
+shipment_data <- read_csv("datasets/quarterly_vols_strawberries.csv")
+
+
+# 1. Process the Shipment (transport) data
+# The goal is to aggregate quarterly shipment data into annual totals
+# to match the annual production data.
+annual_shipments <- shipment_data %>%
+  # Group data by the Year and the Origin (state)
+  group_by(Year, Origin) %>%  
+  # Sum the 'Tons' for each group to get a yearly total per state
+  summarise(
+    total_tonnage = sum(Tons, na.rm = TRUE) # na.rm = TRUE ignores missing values
+  ) %>%
+  ungroup() %>% 
+  # Rename columns to match the 'production_data' for joining
+  # 'Year' -> 'year'
+  # 'Origin' -> 'state'
+  rename(year = Year, state = Origin) 
+
+# Now, 'annual_shipments' has 'year', 'state', and 'total_tonnage' columns.
+
+# 2. Process the Production data (Unify units)
+# The production data ('production_cwt') is in "hundredweight" (CWT).
+# The shipment data ('total_tonnage') is in "Tons".
+# We must convert them to the same unit for a valid comparison.
+# Conversion: 1 Ton = 2000 lbs, 1 CWT = 100 lbs. Therefore, 1 Ton = 20 CWT.
+production_data <- production_data %>%
+  mutate(
+    # Create a new column 'production_tons' by dividing CWT by 20
+    production_tons_total = production_cwt_total / 20 
+  )
+
+
+# 3. Join the two datasets
+# Use inner_join to combine the two tables.
+# It will only keep rows where the 'year' AND 'state' exist in BOTH tables.
+combined_data <- inner_join(
+  annual_shipments,    # Left table (annual shipments)
+  production_data,     # Right table (annual production)
+  by = c("year", "state") # The common columns to match on
+)
+write.csv(combined_data, "combined_data.csv", row.names = FALSE)
+```
+
+## 4. Analysis & Visualization: Market Concentration
+
+### **Objective:**
+
+-   To visualize the national strawberry market to identify key production and shipment hubs.
+
+### **Method:**
+
+**1. Join Strategy:** A left_join is used, keeping all states from the production_data and adding annual_shipments data where it exists. This ensures we can see states that have production but no recorded (or negligible) shipments.
+
+**2. Grouping:** States are categorized into three groups: "CALIFORNIA", "FLORIDA", and "Other States" using case_when.
+
+**3. Aggregation:** The data is grouped by year and state_group to sum the total production and shipment volumes for each group.
+
+**4. Visualization:** Two line plots are generated using ggplot2 to compare the annual production and shipment volumes for these three groups.
+
+```{r}
+library(ggplot2)
+
+# This keeps ALL states from production_data (the "left" table)
+# and adds shipment data (from annual_shipments) only where it matches.
+all_states_combined_data <- left_join(
+  production_data,     # Left table (annual production for ALL states)
+  annual_shipments,    # Right table (annual shipments)
+  by = c("year", "state") # Common key columns
+)
+
+# Group states into three categories: CALIFORNIA, FLORIDA, and "Other States"
+grouped_data <- all_states_combined_data %>%
+  mutate(
+    state_group = case_when(
+      state == "CALIFORNIA" ~ "CALIFORNIA",
+      state == "FLORIDA"    ~ "FLORIDA",
+      TRUE                  ~ "Other States" # All other states go here
+    )
+  )
+
+# Now we sum production/shipments for all "Other States" for each year
+annual_comparison_data <- grouped_data %>%
+  group_by(year, state_group) %>%
+  summarise(
+    # We must use na.rm = TRUE here
+    total_production = sum(production_tons_total, na.rm = TRUE),
+    total_shipment = sum(total_tonnage, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Visualize Production (CA vs. FL vs. "Other")
+# produtction_ct for year>2016 not added yet
+plot_production_grouped <- ggplot(annual_comparison_data, 
+                                  aes(x = year, y = total_production, color = state_group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("CALIFORNIA" = "lightblue", "FLORIDA" = "lightgreen", "Other States" = "salmon"),
+                     breaks = c("CALIFORNIA", "FLORIDA", "Other States")) +
+  labs(
+    title = "Annual Strawberry Production: CA & FL vs. All Other States",
+    x = "Year",
+    y = "Total Production (Tons)",
+    color = "State Group"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma)
+
+print(plot_production_grouped)
+
+# Visualize Shipments (CA vs. FL vs. "Other")
+# Note: "Other States" shipments will be very low, as most don't have shipment data
+plot_shipment_grouped <- ggplot(annual_comparison_data, 
+                                aes(x = year, y = total_shipment, color = state_group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("CALIFORNIA" = "lightblue", "FLORIDA" = "lightgreen", "Other States" = "salmon"),
+                     breaks = c("CALIFORNIA", "FLORIDA", "Other States")) +
+  labs(
+    title = "Annual Strawberry Shipments: CA & FL vs. All Other States",
+    x = "Year",
+    y = "Total Shipments (Tons)",
+    color = "State Group"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma)
+
+print(plot_shipment_grouped)
+```
+
+### 4.1. Elaboration on Market Concentration Findings
+
+The two line plots generated from the `annual_comparison_data` provide a stark and immediate justification for the project's analytical focus. The finding that all significant analysis should be on California and Florida is supported by the following detailed observations:
+
+**1. Overwhelming Production Dominance (Graph 1):**
+
+-   **Scale:** The Y-axis (Total Production) for California (blue line) ranges from \~700,000 tons to nearly 1,500,000 tons. In contrast, Florida's production (green line) hovers at a much smaller scale, roughly between 100,000 and 150,000 tons.
+-   **Negligibility:** The "Other States" category (red line) is visually indistinguishable from the zero-axis. This demonstrates that the combined production of all other 48 states is statistically insignificant compared to the output of just California or Florida.
+
+**2. Identical Dominance in Transportation (Graph 2):**
+
+-   **Mirroring Production:** The "Annual Strawberry Shipments" graph, which tracks the refrigerated truck movements central to our analysis, tells the exact same story.
+-   **Logistical Hubs:** California's shipments (blue line) completely dominate the transportation network, growing from \~500,000 to nearly 1,000,000 tons. Florida (green line) represents the only other significant shipping origin.
+-   **Statistical Zero:** The "Other States" (red line) again registers at zero. This is a critical finding: **there are virtually no refrigerated strawberry shipments originating from outside California or Florida** according to this dataset.
+
+**3. Key Analytical Justification:**
+
+-   These visualizations are not just descriptive; they are **prescriptive**. They confirm that any effort spent analyzing data from "Other States" would be irrelevant to understanding the national strawberry transportation market.
+-   The U.S. strawberry market is, in effect, a **two-state system**. This finding allows us to simplify the analysis and focus all subsequent efforts on comparing the production volumes, pricing, and transportation logistics of California and Florida, which together account for nearly 100% of the relevant market.
+
+## 5 Analysis: Price vs. Production Volume (California vs. Florida)
+
+After identifying California and Florida as the dominant producers, the analysis now shifts to the economic differences between their markets. We first investigate the average price of strawberries from each state.
+
+### 5.1 Average Price Comparison
+
+**Objective:** To determine the baseline average price for strawberries (\$ / CWT) in each state.
+
+**Method:** The `combined_data.csv` file, which contains data only for states with both production and shipment records (primarily CA and FL), is used. We group the data by `state` and calculate the `mean` of the `price_overall` column.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# df is loaded from the previous chunk, but reloading is good practice
+# in a self-contained Rmd section.
+df <- read.csv("combined_data.csv")
+
+# Calculate average price
+avg_price <- df %>%
+      group_by(state) %>%
+      summarise(mean_price_overall = mean(price_overall, na.rm = TRUE))
+
+# Create the bar plot
+plot2 <- ggplot(data = avg_price, aes(x = reorder(state, -mean_price_overall), y = mean_price_overall, fill = state))+
+      geom_col() + 
+      labs(title = "Average Overall Price by State", 
+           x = "State", 
+           y = "Average Overall Price ($ / CWT)") +
+      theme_minimal() +
+      theme(legend.position = "none") 
+
+print(plot2)
+```
+
+**Finding 1:** Florida's Prices are Significantly Higher
+
+-   The bar chart clearly shows that strawberries from Florida command a significantly higher average price (approximately \$50 higher per CWT) than those from California.
+
+### 5.2 Relationship Between Production Volume and Price
+
+**Objective:** To explore the hypothesis that this price difference is related to production volume (tonnage).
+
+**Method:** We create a scatter plot of total_tonnage (x-axis) versus price_overall (y-axis). A separate linear regression line (geom_smooth) is fitted for each state to visualize the relationship between volume and price.
+
+```{r}
+# This code uses the 'df' data frame already loaded
+plot3 <- ggplot(data = df, aes(x = total_tonnage, y = price_overall)) +
+  
+  # Original scatter plot (color/shape by state)
+  geom_point(aes(color = state, shape = state), size = 3, alpha = 0.8) +
+  
+  # --- Analysis 1: Trend line by state (Linear Regression) ---
+  # Adding color=state to aes() draws a separate trend line per state.
+  geom_smooth(aes(color = state, group = state), 
+              method = "lm",  # lm = Linear Model
+              se = FALSE,     # se = FALSE (remove confidence interval)
+              linewidth = 1) +
+  
+  
+  labs(title = "Price vs. Tonnage with Regression Lines",
+       x = "Total Tonnage (Tons)",
+       y = "Overall Price ($ / CWT)", 
+       color = "State", 
+       shape = "State") +
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma) + # Format axes
+  scale_x_continuous(labels = scales::comma)
+
+print(plot3)
+```
+
+**Finding 2:** Different Price-Volume Dynamics
+
+-   The scatter plot reveals two key insights:
+
+-   Production Scale: It confirms the finding from Section 4: California (blue) operates at a much higher production volume (tonnage) than Florida (red).
+
+-   Price Sensitivity: The regression lines show that not only does Florida maintain a higher average price at lower volumes, but its price also appears to increase more steeply with production compared to California's.
+
+### 5.3 Initial Hypotheses for Analysis
+
+While this analysis does not prove causation, these findings lead to several initial hypotheses for the observed price differences:
+
+**Scarcity and Market Niche:** Florida's significantly lower production volume may create a scarcity effect or cater to a premium market niche, allowing it to command higher prices.
+
+**Logistical / Market Factors:** California's vast production may be geared towards broader national and international distribution, potentially with different pricing structures or logistical efficiencies (e.g., related to import/export) that result in a lower average price.
+
+**Climate and Growing Conditions:** The distinct climates in California and Florida affect growing seasons, fruit quality, and production costs. California's climate may be more favorable for high-volume, consistent production, leading to different market dynamics than in Florida.
+
+## 6 State Analysis
+
+### 6.1 Load Data
+
+```{r cars, echo=FALSE}
+pacman::p_load(readr)
+df <- read_csv('combined_data.csv')
+
+```
+
+```{r}
+pacman::p_load(ggplot2)
+# 6. SHIPMENT VOLUME VS PRODUCTION (SCATTER PLOT) with California regression
+ggplot(df, aes(x = production_tons_total / 1000, y = total_tonnage / 1000, 
+               color = state, shape = state)) +
+  geom_point(size = 4, alpha = 0.7) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", alpha = 0.5) +
+  geom_smooth(data = df %>% filter(state == "CALIFORNIA"), 
+              method = "lm", 
+              se = TRUE,  # Show confidence interval
+              linetype = "solid",
+              linewidth = 1) +
+  labs(
+    title = "Shipment Volume vs Production Volume",
+    subtitle = "Points above line indicate shipments > production; California regression shown",
+    x = "Production (1000s of tons)",
+    y = "Refrigerated Truck Shipments (1000s of tons)",
+    color = "State",
+    shape = "State"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    legend.position = "bottom"
+  )
+
+# Calculate the actual slopes and R²
+ca_model <- lm(total_tonnage ~ production_tons_total, 
+               data = df %>% filter(state == "CALIFORNIA"))
+fl_model <- lm(total_tonnage ~ production_tons_total, 
+               data = df %>% filter(state == "FLORIDA"))
+
+# Extract slope
+ca_slope <- coef(ca_model)[2]
+fl_slope <- coef(fl_model)[2]
+
+print(paste("California slope:", round(ca_slope, 3)))
+print(paste("Florida slope:", round(fl_slope, 3)))
+```
+
+**6.3 Key Findings:**
+
+-   **Production scale**: California's strawberry production substantially exceeds Florida's
+-   **Market destination**: Florida allocates a higher proportion of production to fresh markets
+-   **Distribution patterns**: California exhibits market adaptation as production scales, with fresh shipments via refrigerated trucks growing at only 0.507 tons per ton of production increase
+
+This divergence suggests California's production increasingly serves processed markets, utilizes alternative distribution channels, or employs strategic storage to balance seasonal supply fluctuations.
