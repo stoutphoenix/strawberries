@@ -1,0 +1,49 @@
+---
+title: "Strawberry analysis"
+format: html
+editor: visual
+---
+
+# Shipment VS Production ratio Analysis:
+
+```{r}
+df <- read.csv('~/Desktop/MA615/strawberry-new/combined_data.csv')
+library(ggplot2)
+library(dplyr)
+
+df_ratio <- df %>%
+  filter(state %in% c("CALIFORNIA", "FLORIDA")) %>%
+  mutate(ratio = total_tonnage / production_tons_total)
+
+ggplot(df_ratio, aes(x = year, y = ratio, color = state)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Shipment-to-Production Ratio Over Time",
+       x = "Year",
+       y = "Shipment / Production Ratio") +
+  theme_minimal()
+
+
+```
+
+**Formula:**
+
+total_shipment/total_production
+
+**Interpretation of the results:**
+
+A ratio **greater than 1** means more strawberries were shipped than produced, which could happen if shipments include imports or inventory from previous years.
+
+A ratio **equal to 1** means shipments match production exactly.
+
+A ratio **less than 1** indicates that not all produced strawberries were shipped, possibly due to local consumption or storage.
+
+**Key findings:**
+
+Looking at the graph from 2000 to 2024, California and Florida show clearly different patterns.
+
+For California, the ratio consistently stays below 1, meaning it never ships more than it produces. It rises from 0.69 in 2000 to 0.78 in 2002, dips to around 0.56 in 2004, possibly due to lower demand or transportation challenges, then remains relatively stable around 0.58–0.78. Overall, California maintains a steady and moderate shipment efficiency, suggesting consistent production and distribution practices.
+
+In contrast, Florida’s ratio is much more volatile. It first exceeded 1 in 2013, meaning it shipped more than it produced that year—likely due to imports or the release of stored inventory. The ratio peaks at 1.2 in 2017, reflecting high shipment activity, possibly driven by strong demand or favorable growing conditions. Afterward, it drops back to 0.78, showing shipments realigning with production.
+
+In summary, California demonstrates a stable and predictable shipping pattern, while Florida shows more aggressive and variable shipment behavior. These differences likely reflect distinct strategies in production, storage, and market response between the two states.
