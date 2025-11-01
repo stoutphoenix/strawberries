@@ -57,3 +57,27 @@ This project combines USDA strawberry production data with transportation shipme
 
 **Final Combined Data:** 
 - The resulting dataset (combined_data) contains one row per state per year, with columns for production_tons, total_tonnage, acres_harvested, and price_per_cwt, allowing for direct comparison.
+
+## Analysis
+
+Based on the combined_data, the following analyses were performed:
+
+**Price vs. Production Volume (California vs. Florida):** A comparative
+analysis of the relationship between price (price_per_cwt) and annual
+production volume (production_tons). This analysis focuses on the two
+largest producers, California and Florida, to identify trends and
+potential inverse correlations between supply and price.
+
+**State Analysis:** An examination of state-by-state production and
+shipment trends over time. This includes visualizing production_tons,
+acres_harvested, and total_tonnage to identify which states are primary
+producers versus primary shippers and how their roles have changed over
+the years.
+
+**Shipment vs. Production Ratio Analysis:** Calculation and analysis of
+the shipment-to-production ratio (calculated as total_tonnage /
+production_tons) for each state and year. This key metric provides
+insight into what percentage of a state's total production is being
+shipped via refrigerated trucks, highlighting patterns in local
+consumption, alternative shipping methods, or potential data
+discrepancies.
