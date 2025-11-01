@@ -57,6 +57,12 @@ fl_slope <- coef(fl_model)[2]
 print(paste("California slope:", round(ca_slope, 3)))
 print(paste("Florida slope:", round(fl_slope, 3)))
 ```
-This graph shows that the scale of strawberry production is vastly different between California and Florida, with California producing significantly more tons. It also shows that a higher majority of Florida production gets shipped to fresh market than California. Additionally, this graph shows the market adaptation of California to ship less fresh market strawberries through refrigerated trucks as production increases. This is shown through the slope of 0.507 when comparing tons shipped to tons produced. This could be due to more strawberry production going towards processed products, alternative distribution methods, or long-term storage to meet demand when supply diminishes.
+**Key Findings:**
+
+- **Production scale**: California's strawberry production substantially exceeds Florida's
+- **Market destination**: Florida allocates a higher proportion of production to fresh markets
+- **Distribution patterns**: California exhibits market adaptation as production scales, with fresh shipments via refrigerated trucks growing at only 0.507 tons per ton of production increase
+
+This divergence suggests California's production increasingly serves processed markets, utilizes alternative distribution channels, or employs strategic storage to balance seasonal supply fluctuations.
 
 
