@@ -4,6 +4,8 @@ format: html
 editor: visual
 ---
 
+# Shipment VS Production ratio Analysis:
+
 ```{r}
 df <- read.csv('~/Desktop/MA615/strawberry-new/combined_data.csv')
 library(ggplot2)
@@ -24,9 +26,11 @@ ggplot(df_ratio, aes(x = year, y = ratio, color = state)) +
 
 ```
 
-The shipment to production ratio **formula** is :
+**Formula:**
 
-**total_shipment/total_production:**
+total_shipment/total_production
+
+**Interpretation of the results:**
 
 A ratio **greater than 1** means more strawberries were shipped than produced, which could happen if shipments include imports or inventory from previous years.
 
@@ -34,7 +38,7 @@ A ratio **equal to 1** means shipments match production exactly.
 
 A ratio **less than 1** indicates that not all produced strawberries were shipped, possibly due to local consumption or storage.
 
-**Interpretation of the graph:**
+**Key findings:**
 
 Looking at the graph from 2000 to 2024, California and Florida show clearly different patterns.
 
